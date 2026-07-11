@@ -1,0 +1,13 @@
+{
+  "name": "Zonnepanelen Dashboard",
+  "short_name": "Zonnepanelen",
+  "description": "Enphase solar panel insights dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0f14",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icons.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
