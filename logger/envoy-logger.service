@@ -1,0 +1,15 @@
+[Unit]
+Description=Envoy-S logger voor Zonnepanelen
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__DIR__
+EnvironmentFile=__ENVFILE__
+ExecStart=/usr/bin/env node __DIR__/logger.mjs
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

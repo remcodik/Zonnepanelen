@@ -3,6 +3,7 @@ import { Key, Palette, BarChart2, Download, Trash2, RotateCcw, CheckCircle } fro
 import { useSolar } from "../context/SolarContext";
 import { useTheme } from "../context/ThemeContext";
 import { enlightenApi } from "../services/enlightenApi";
+import { loggerApi } from "../services/loggerApi";
 import { format } from "date-fns";
 
 function Section({ title, icon: Icon, children }) {
@@ -48,12 +49,17 @@ function ToggleRow({ label, sub, themeKey }) {
 }
 
 export default function Instellingen() {
-  const { connect, disconnect, configured, daily } = useSolar();
+  const { connect, disconnect, connectLogger, disconnectLogger, daily } = useSolar();
+  const cloudOk = enlightenApi.isConfigured;
+  const loggerOk = loggerApi.isConfigured;
   const { t, update, reset } = useTheme();
   const [token,    setToken]    = useState("");
   const [apiKey,   setApiKey]   = useState("");
   const [systemId, setSystemId] = useState(enlightenApi.systemId || "");
   const [baseUrl,  setBaseUrl]  = useState(enlightenApi.baseUrl || "");
+  const [lgUrl,    setLgUrl]    = useState(loggerApi.url || "");
+  const [lgKey,    setLgKey]    = useState("");
+  const [lgSaved,  setLgSaved]  = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [exDone,   setExDone]   = useState(false);
 
@@ -66,6 +72,15 @@ export default function Instellingen() {
     setToken(""); setApiKey("");
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  function handleLogger(e) {
+    e.preventDefault();
+    if (!(lgUrl.trim() || loggerApi.url) || !(lgKey.trim() || loggerApi.hasKey)) return;
+    connectLogger({ url: lgUrl, key: lgKey });
+    setLgKey("");
+    setLgSaved(true);
+    setTimeout(() => setLgSaved(false), 3000);
   }
 
   function handleExport() {
@@ -84,8 +99,8 @@ export default function Instellingen() {
     <div className="fade-up" style={{ maxWidth:800, margin:"0 auto", padding:"24px 20px", display:"flex", flexDirection:"column", gap:20 }}>
 
       <Section title="Enphase Enlighten API" icon={Key}>
-        <div style={{ padding:"12px 14px", borderRadius:10, marginBottom:20, fontSize:13, border:"1px solid", ...(configured ? { background:"rgba(16,185,129,0.07)", borderColor:"rgba(16,185,129,0.2)", color:"#10b981" } : { background:"rgba(245,158,11,0.07)", borderColor:"rgba(245,158,11,0.2)", color:"#d97706" }) }}>
-          {configured
+        <div style={{ padding:"12px 14px", borderRadius:10, marginBottom:20, fontSize:13, border:"1px solid", ...(cloudOk ? { background:"rgba(16,185,129,0.07)", borderColor:"rgba(16,185,129,0.2)", color:"#10b981" } : { background:"rgba(245,158,11,0.07)", borderColor:"rgba(245,158,11,0.2)", color:"#d97706" }) }}>
+          {cloudOk
             ? "✓ Gekoppeld — gegevens staan in je browser. Een access token is 1 dag geldig: vernieuw alleen het token als de data stopt met laden."
             : "Nog niet gekoppeld. Vul token, API key en System ID in — wordt opgeslagen in localStorage."}
         </div>
@@ -96,7 +111,7 @@ export default function Instellingen() {
               Access Token (Bearer)
             </label>
             <input type="password" className="input-base" value={token} onChange={e => setToken(e.target.value)}
-              placeholder={configured ? "••••••• (reeds opgeslagen)" : "eyJ0eXAiOiJKV1Q..."} />
+              placeholder={cloudOk ? "••••••• (reeds opgeslagen)" : "eyJ0eXAiOiJKV1Q..."} />
           </div>
           <div>
             <label style={{ fontSize:11, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", color:"var(--txt-4)", display:"block", marginBottom:6 }}>
@@ -120,9 +135,9 @@ export default function Instellingen() {
           </div>
           <div style={{ display:"flex", gap:8, paddingTop:4 }}>
             <button type="submit" className="btn-primary">
-              {saved ? <><CheckCircle size={14} /> Opgeslagen</> : configured ? "Bijwerken" : "Verbinden"}
+              {saved ? <><CheckCircle size={14} /> Opgeslagen</> : cloudOk ? "Bijwerken" : "Verbinden"}
             </button>
-            {configured && (
+            {cloudOk && (
               <button type="button" className="btn-ghost" onClick={disconnect}>
                 <Trash2 size={13} /> Ontkoppelen
               </button>
@@ -138,6 +153,38 @@ export default function Instellingen() {
           4. Autoriseer de app voor je systeem en kopieer het access token (1 dag geldig)<br />
           5. Je System ID vind je in de URL van enlightenmanager.enphaseenergy.com
         </div>
+      </Section>
+
+      <Section title="Eigen logger (Raspberry Pi)" icon={Key}>
+        <p style={{ fontSize:13, color:"var(--txt-3)", marginBottom:16, lineHeight:1.6 }}>
+          Lees je Envoy lokaal uit via een eigen logger — geen Enphase developer-account nodig. Zie <strong>logger/README.md</strong>.
+          Is de logger gekoppeld, dan gebruikt de app die in plaats van de Enphase-cloud.
+        </p>
+        <form onSubmit={handleLogger} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          <div>
+            <label style={{ fontSize:11, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", color:"var(--txt-4)", display:"block", marginBottom:6 }}>
+              Logger-URL (https)
+            </label>
+            <input type="text" className="input-base" value={lgUrl} onChange={e => setLgUrl(e.target.value)} placeholder="https://pi.jouw-tailnet.ts.net" />
+          </div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", color:"var(--txt-4)", display:"block", marginBottom:6 }}>
+              API key
+            </label>
+            <input type="password" className="input-base" value={lgKey} onChange={e => setLgKey(e.target.value)}
+              placeholder={loggerApi.hasKey ? "••••••• (reeds opgeslagen)" : "API key uit setup.sh"} />
+          </div>
+          <div style={{ display:"flex", gap:8, paddingTop:4 }}>
+            <button type="submit" className="btn-primary">
+              {lgSaved ? <><CheckCircle size={14} /> Opgeslagen</> : loggerOk ? "Bijwerken" : "Verbinden"}
+            </button>
+            {loggerOk && (
+              <button type="button" className="btn-ghost" onClick={disconnectLogger}>
+                <Trash2 size={13} /> Ontkoppelen
+              </button>
+            )}
+          </div>
+        </form>
       </Section>
 
       <Section title="Kleuren" icon={Palette}>

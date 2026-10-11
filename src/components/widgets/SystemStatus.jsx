@@ -41,8 +41,8 @@ export default function SystemStatus() {
 
       <div>
         <Row label="Vermogen nu"  value={fmtW(summary?.current_power || 0)} />
-        <Row label="Capaciteit"   value={summary ? `${(summary.size_w/1000).toFixed(1)} kWp` : "—"} />
-        <Row label="Panelen"      value={summary?.modules} />
+        <Row label="Capaciteit"   value={summary?.size_w ? `${(summary.size_w/1000).toFixed(1)} kWp` : "—"} />
+        <Row label="Panelen"      value={summary?.modules || "—"} />
         <Row label="Apparaten"    value={deviceCount || "—"} />
         <Row label="Laatste melding" value={fmtLast(summary?.last_report_at)} />
       </div>
