@@ -9,10 +9,11 @@ import { useTheme } from "../context/ThemeContext";
 import KpiCard from "../components/ui/KpiCard";
 import ChartTooltip from "../components/charts/Tooltip";
 import Spinner from "../components/ui/Spinner";
+import NotConnected from "../components/ui/NotConnected";
 import { co2Kg } from "../utils/format";
 
-export default function Analyse() {
-  const { summary, daily, monthly, loadData, loading } = useSolar();
+export default function Analyse({ onSettings }) {
+  const { configured, summary, daily, monthly, loadData, loading, error } = useSolar();
   const { t } = useTheme();
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -47,10 +48,11 @@ export default function Analyse() {
   }, [monthly]);
 
   // Weekday pattern from daily data
+  const recentDaily = useMemo(() => daily.slice(-90), [daily]);
   const weekdayData = useMemo(() => {
     const DAYS = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
     const sums = Array(7).fill(0), counts = Array(7).fill(0);
-    daily.forEach(d => {
+    recentDaily.forEach(d => {
       const day = new Date(d.date).getDay();
       sums[day] += d.wh_del || 0;
       counts[day]++;
@@ -58,12 +60,22 @@ export default function Analyse() {
     return DAYS.map((dag, i) => ({
       dag, gem: counts[i] ? Math.round(sums[i]/counts[i]/1000*10)/10 : 0,
     }));
-  }, [daily]);
+  }, [recentDaily]);
 
   // Stats
   const thisYearKwh = useMemo(() => monthly.filter(m => m.month?.startsWith(new Date().getFullYear().toString())).reduce((s,d) => s+d.kwh, 0), [monthly]);
   const best = useMemo(() => monthly.reduce((b,d) => d.kwh > (b?.kwh||0) ? d : b, null), [monthly]);
-  const avgPerDay = useMemo(() => daily.length ? +(daily.reduce((s,d) => s+(d.wh_del||0), 0)/daily.length/1000).toFixed(1) : 0, [daily]);
+  const avgPerDay = useMemo(() => recentDaily.length ? +(recentDaily.reduce((s,d) => s+(d.wh_del||0), 0)/recentDaily.length/1000).toFixed(1) : 0, [recentDaily]);
+
+  if (!configured) return <NotConnected onSettings={onSettings} />;
+
+  if (error) return (
+    <div style={{ maxWidth:1280, margin:"0 auto", padding:24 }}>
+      <div style={{ padding:16, borderRadius:12, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.2)", color:"#ef4444", fontSize:14 }}>
+        <strong>Fout bij laden:</strong> {error}
+      </div>
+    </div>
+  );
 
   if (loading && !monthly.length) return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height: 320 }}>
@@ -78,7 +90,7 @@ export default function Analyse() {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
         <KpiCard label="Dit jaar"     value={`${thisYearKwh} kWh`}       icon="📅" accentColor="var(--c1)" />
         <KpiCard label="Beste maand"  value={best?.label || "—"}          icon="🏆" accentColor="var(--c1)" />
-        <KpiCard label="Gem. per dag" value={`${avgPerDay} kWh`}          icon="📊" accentColor="var(--c2)" />
+        <KpiCard label="Gem. per dag" sub="laatste 90 dagen" value={`${avgPerDay} kWh`}          icon="📊" accentColor="var(--c2)" />
         <KpiCard label="CO₂ dit jaar" value={`${co2Kg(thisYearKwh*1000)} kg`} icon="🌿" accentColor="var(--c3)" />
       </div>
 

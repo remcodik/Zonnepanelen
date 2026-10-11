@@ -22,7 +22,7 @@ export default function App() {
           <TopBar onSettings={() => setPage("instellingen")} />
           <NavTabs active={page} onChange={setPage} />
           <div style={{ flex: 1 }}>
-            <Page key={page} />
+            <Page key={page} onSettings={() => setPage("instellingen")} />
           </div>
           <Footer />
         </div>

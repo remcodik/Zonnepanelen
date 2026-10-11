@@ -48,18 +48,22 @@ function ToggleRow({ label, sub, themeKey }) {
 }
 
 export default function Instellingen() {
-  const { connect, disconnect, demo, daily } = useSolar();
+  const { connect, disconnect, configured, daily } = useSolar();
   const { t, update, reset } = useTheme();
   const [token,    setToken]    = useState("");
-  const [systemId, setSystemId] = useState("");
+  const [apiKey,   setApiKey]   = useState("");
+  const [systemId, setSystemId] = useState(enlightenApi.systemId || "");
+  const [baseUrl,  setBaseUrl]  = useState(enlightenApi.baseUrl || "");
   const [saved,    setSaved]    = useState(false);
   const [exDone,   setExDone]   = useState(false);
-  const configured = enlightenApi.isConfigured;
 
   function handleConnect(e) {
     e.preventDefault();
-    if (!token.trim() || !systemId.trim()) return;
-    connect(token.trim(), systemId.trim());
+    // Bij een bestaande koppeling mogen velden leeg blijven (bv. alleen token verversen)
+    const missing = !(token.trim() || enlightenApi.hasToken) || !(apiKey.trim() || enlightenApi.hasApiKey) || !(systemId.trim() || enlightenApi.systemId);
+    if (missing) return;
+    connect({ token, apiKey, systemId, baseUrl });
+    setToken(""); setApiKey("");
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -82,8 +86,8 @@ export default function Instellingen() {
       <Section title="Enphase Enlighten API" icon={Key}>
         <div style={{ padding:"12px 14px", borderRadius:10, marginBottom:20, fontSize:13, border:"1px solid", ...(configured ? { background:"rgba(16,185,129,0.07)", borderColor:"rgba(16,185,129,0.2)", color:"#10b981" } : { background:"rgba(245,158,11,0.07)", borderColor:"rgba(245,158,11,0.2)", color:"#d97706" }) }}>
           {configured
-            ? "✓ API gekoppeld — token is opgeslagen in je browser. Je hoeft dit niet opnieuw in te voeren."
-            : "Nog niet gekoppeld. Eenmalig invullen — wordt opgeslagen in localStorage."}
+            ? "✓ Gekoppeld — gegevens staan in je browser. Een access token is 1 dag geldig: vernieuw alleen het token als de data stopt met laden."
+            : "Nog niet gekoppeld. Vul token, API key en System ID in — wordt opgeslagen in localStorage."}
         </div>
 
         <form onSubmit={handleConnect} style={{ display:"flex", flexDirection:"column", gap:14 }}>
@@ -96,13 +100,27 @@ export default function Instellingen() {
           </div>
           <div>
             <label style={{ fontSize:11, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", color:"var(--txt-4)", display:"block", marginBottom:6 }}>
+              API key (van je developer-applicatie)
+            </label>
+            <input type="password" className="input-base" value={apiKey} onChange={e => setApiKey(e.target.value)}
+              placeholder={enlightenApi.hasApiKey ? "••••••• (reeds opgeslagen)" : "API key"} />
+          </div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", color:"var(--txt-4)", display:"block", marginBottom:6 }}>
               System ID
             </label>
             <input type="text" className="input-base" value={systemId} onChange={e => setSystemId(e.target.value)} placeholder="12345" />
           </div>
+          <div>
+            <label style={{ fontSize:11, fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase", color:"var(--txt-4)", display:"block", marginBottom:6 }}>
+              Proxy-URL (optioneel)
+            </label>
+            <input type="text" className="input-base" value={baseUrl} onChange={e => setBaseUrl(e.target.value)}
+              placeholder="https://api.enphaseenergy.com/api/v4 (standaard)" />
+          </div>
           <div style={{ display:"flex", gap:8, paddingTop:4 }}>
             <button type="submit" className="btn-primary">
-              {saved ? <><CheckCircle size={14} /> Opgeslagen</> : configured ? "Token bijwerken" : "Verbinden"}
+              {saved ? <><CheckCircle size={14} /> Opgeslagen</> : configured ? "Bijwerken" : "Verbinden"}
             </button>
             {configured && (
               <button type="button" className="btn-ghost" onClick={disconnect}>
@@ -116,8 +134,9 @@ export default function Instellingen() {
           <strong style={{ color:"var(--txt-2)" }}>Hoe je de token krijgt:</strong><br />
           1. Maak een account op <strong>developer.enphase.com</strong><br />
           2. Maak een applicatie aan → kies OAuth 2.0<br />
-          3. Autoriseer en kopieer je access token<br />
-          4. Je System ID vind je in de URL van enlightenmanager.enphaseenergy.com
+          3. Kopieer de <strong>API key</strong> van je applicatie<br />
+          4. Autoriseer de app voor je systeem en kopieer het access token (1 dag geldig)<br />
+          5. Je System ID vind je in de URL van enlightenmanager.enphaseenergy.com
         </div>
       </Section>
 

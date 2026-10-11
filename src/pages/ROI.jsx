@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
+import { useSolar } from "../context/SolarContext";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
 import { useTheme } from "../context/ThemeContext";
 import ChartTooltip from "../components/charts/Tooltip";
@@ -23,11 +25,22 @@ function NumInput({ label, value, onChange, prefix, suffix, step=1, min=0 }) {
 
 export default function ROI() {
   const { t } = useTheme();
+  const { configured, monthly, loadData } = useSolar();
+  useEffect(() => { loadData(); }, [loadData]);
   const [kosten,      setKosten]      = useState(8500);
   const [subsidie,    setSubsidie]    = useState(1500);
   const [tarief,      setTarief]      = useState(0.32);
   const [teruglever,  setTeruglever]  = useState(0.09);
-  const [jaarProd,    setJaarProd]    = useState(5200);
+  const [jaarProdInput, setJaarProd] = useState(null);
+
+  // Echte jaarproductie: som van de laatste 12 volledige maanden uit je Enphase-data
+  const echteJaarProd = useMemo(() => {
+    if (!configured) return null;
+    const huidig = format(new Date(), "yyyy-MM");
+    const volledig = monthly.filter(m => m.month < huidig).slice(-12);
+    return volledig.length === 12 ? volledig.reduce((s, m) => s + m.kwh, 0) : null;
+  }, [configured, monthly]);
+  const jaarProd = jaarProdInput ?? echteJaarProd ?? 5200;
   const [eigenPct,    setEigenPct]    = useState(40);
   const [inflatie,    setInflatie]    = useState(3);
   const [levensduur,  setLevensduur]  = useState(25);
@@ -58,7 +71,7 @@ export default function ROI() {
           <NumInput label="Subsidie / SDE"    value={subsidie}   onChange={setSubsidie}   prefix="€" step={100} />
           <NumInput label="Stroomtarief"      value={tarief}     onChange={setTarief}     prefix="€" suffix="/kWh" step={0.01} />
           <NumInput label="Teruglevertarief"  value={teruglever} onChange={setTeruglever} prefix="€" suffix="/kWh" step={0.01} />
-          <NumInput label="Jaarproductie"     value={jaarProd}   onChange={setJaarProd}   suffix="kWh" step={100} />
+          <NumInput label={echteJaarProd != null && jaarProdInput == null ? "Jaarproductie (gemeten)" : "Jaarproductie"} value={jaarProd}   onChange={setJaarProd}   suffix="kWh" step={100} />
           <NumInput label="Eigen verbruik"    value={eigenPct}   onChange={setEigenPct}   suffix="%" min={0} />
           <NumInput label="Tariefstijging"    value={inflatie}   onChange={setInflatie}   suffix="% /j" step={0.5} />
           <NumInput label="Levensduur"        value={levensduur} onChange={setLevensduur} suffix="jaar" min={5} max={40} />

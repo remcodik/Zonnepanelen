@@ -7,6 +7,13 @@ const STATUS = {
   meter:  { icon: AlertTriangle, color: "#f59e0b", label: "Meetfout" },
   micro:  { icon: AlertTriangle, color: "#f97316", label: "Omvormer" },
   power:  { icon: XCircle,      color: "#ef4444", label: "Geen stroom" },
+  comm:   { icon: AlertTriangle, color: "#f59e0b", label: "Envoy meldt niet" },
+  no_data:{ icon: AlertTriangle, color: "#f59e0b", label: "Geen data" },
+};
+
+const fmtLast = (iso) => {
+  if (!iso) return "—";
+  try { return new Date(iso).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return "—"; }
 };
 
 function Row({ label, value }) {
@@ -19,7 +26,7 @@ function Row({ label, value }) {
 }
 
 export default function SystemStatus() {
-  const { summary, devices, alerts } = useSolar();
+  const { summary, deviceCount, alerts } = useSolar();
   const cfg = STATUS[summary?.status] || STATUS.normal;
   const Icon = cfg.icon;
 
@@ -36,13 +43,13 @@ export default function SystemStatus() {
         <Row label="Vermogen nu"  value={fmtW(summary?.current_power || 0)} />
         <Row label="Capaciteit"   value={summary ? `${(summary.size_w/1000).toFixed(1)} kWp` : "—"} />
         <Row label="Panelen"      value={summary?.modules} />
-        <Row label="Apparaten"    value={devices.length || "—"} />
-        <Row label="Type"         value="IQ Gateway" />
+        <Row label="Apparaten"    value={deviceCount || "—"} />
+        <Row label="Laatste melding" value={fmtLast(summary?.last_report_at)} />
       </div>
 
       {alerts.length > 0 && (
         <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(59,130,246,0.08)", borderRadius: 8, fontSize: 12, color: "#3b82f6" }}>
-          {alerts[0]?.message || alerts[0]}
+          {alerts[0]?.message || alerts[0]?.alert_name || String(alerts[0])}
         </div>
       )}
     </div>

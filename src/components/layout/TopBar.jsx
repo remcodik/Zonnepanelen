@@ -5,7 +5,7 @@ import { useTheme } from "../../context/ThemeContext";
 import Badge from "../ui/Badge";
 
 export default function TopBar({ onSettings }) {
-  const { demo, loading, loadData, summary } = useSolar();
+  const { configured, loading, error, loadData, summary } = useSolar();
   const { t, update } = useTheme();
 
   return (
@@ -26,19 +26,19 @@ export default function TopBar({ onSettings }) {
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--txt)", letterSpacing: "-0.02em" }}>
               {summary?.system_name || "Zonnepanelen"}
             </div>
-            {demo && <Badge variant="demo">DEMO</Badge>}
+            {!configured && <Badge variant="warn">NIET GEKOPPELD</Badge>}
           </div>
         </div>
 
         {/* Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {!demo && (
+          {configured && !error && summary && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 8 }}>
               <div className="pulse-dot" />
               <span style={{ fontSize: 11, fontWeight: 500, color: "var(--txt-4)" }}>Live</span>
             </div>
           )}
-          <IconBtn onClick={() => loadData(true)} title="Vernieuwen">
+          <IconBtn onClick={() => loadData(true)} title="Vernieuwen" disabled={!configured}>
             <RefreshCw size={15} className={loading ? "spin" : ""} />
           </IconBtn>
           <IconBtn onClick={() => update({ dark: !t.dark })} title={t.dark ? "Licht" : "Donker"}>
@@ -53,10 +53,10 @@ export default function TopBar({ onSettings }) {
   );
 }
 
-function IconBtn({ children, onClick, title }) {
+function IconBtn({ children, onClick, title, disabled }) {
   return (
-    <button onClick={onClick} title={title}
-      style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid var(--border-2)", background: "transparent", color: "var(--txt-3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s, color 0.15s" }}
+    <button onClick={onClick} title={title} disabled={disabled}
+      style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid var(--border-2)", background: "transparent", color: "var(--txt-3)", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s, color 0.15s" }}
       onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.color = "var(--txt)"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--txt-3)"; }}
     >

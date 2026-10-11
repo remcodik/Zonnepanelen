@@ -6,13 +6,16 @@ import KpiCard from "../components/ui/KpiCard";
 import SystemStatus from "../components/widgets/SystemStatus";
 import ChartTooltip from "../components/charts/Tooltip";
 import Spinner from "../components/ui/Spinner";
+import NotConnected from "../components/ui/NotConnected";
 import { fmtW, fmtKwh, fmtEur, co2Kg, savings } from "../utils/format";
 
-export default function Dashboard() {
-  const { summary, daily, hourly, loadData, loading, error } = useSolar();
+export default function Dashboard({ onSettings }) {
+  const { configured, summary, daily, hourly, warnings, loadData, loading, error } = useSolar();
   const { t } = useTheme();
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  if (!configured) return <NotConnected onSettings={onSettings} />;
 
   if (loading && !summary) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 320 }}>
@@ -34,14 +37,21 @@ export default function Dashboard() {
   const dailyChart = daily.slice(-30).map(d => ({ date: d.date?.slice(5), wh: d.wh_del || 0 }));
   const hourlyChart = hourly;
   const peakW = Math.max(...hourlyChart.map(h => h.watt), 1);
+  const hasHourly = hourlyChart.some(h => h.watt > 0);
 
   return (
     <div className="fade-up" style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
 
+      {warnings.length > 0 && (
+        <div style={{ padding: 12, borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#d97706", fontSize: 12, lineHeight: 1.6 }}>
+          Een deel van de data kon niet worden opgehaald:<br />{warnings.map(w => <div key={w}>• {w}</div>)}
+        </div>
+      )}
+
       {/* KPI row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
         <KpiCard label="Nu opgewekt"     value={fmtW(summary?.current_power || 0)} sub="huidig vermogen" icon="⚡" accentColor="var(--c1)" trend={null} />
-        <KpiCard label="Vandaag"          value={fmtKwh(summary?.energy_today || 0)} sub="totaal vandaag"   icon="☀️" accentColor="var(--c1)" trend={12} />
+        <KpiCard label="Vandaag"          value={fmtKwh(summary?.energy_today || 0)} sub="totaal vandaag"   icon="☀️" accentColor="var(--c1)" />
         <KpiCard label="CO₂ bespaard"    value={`${co2Kg(lf).toLocaleString("nl-NL")} kg`} sub="lifetime" icon="🌿" accentColor="var(--c3)" />
         <KpiCard label="Totale besparing" value={fmtEur(savings(lf))} sub="lifetime"            icon="💶" accentColor="var(--c3)" />
       </div>
@@ -74,6 +84,7 @@ export default function Dashboard() {
         <div className="card" style={{ padding: 20 }}>
           <p className="section-title" style={{ marginBottom: 4 }}>Vandaag per uur</p>
           <p style={{ fontSize: 12, color: "var(--txt-4)", marginBottom: 16 }}>Watt productie</p>
+          {!hasHourly && <p style={{ fontSize: 12, color: "var(--txt-4)", margin: "-8px 0 8px" }}>Nog geen productie vandaag of uurdata niet beschikbaar.</p>}
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={hourlyChart} margin={{ top: 2, right: 2, left: -28, bottom: 0 }}>
               {t.showGrid && <CartesianGrid strokeDasharray="2 4" stroke="var(--border-2)" vertical={false} />}
